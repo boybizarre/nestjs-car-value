@@ -9,7 +9,7 @@ import {
   Query,
   Session,
   NotFoundException,
-  UseInterceptors,
+  UseGuards
   // ClassSerializerInterceptor
 } from '@nestjs/common';
 import { Serialize } from '../interceptors/serialize.interceptor';
@@ -19,12 +19,11 @@ import { UsersService } from './users.service';
 import { AuthService } from './auth.service';
 import { UserDto } from '../users/dtos/user.dto';
 import { CurrentUser } from './decorators/current-user.decorator';
-import { CurrentUserInterceptor } from './interceptors/current-user.interceptor';
 import { User } from './user.entity';
+import { AuthGuard } from 'src/guards/auth.guard';
 
 @Controller('auth')
 @Serialize(UserDto)
-@UseInterceptors(CurrentUserInterceptor)
 export class UsersController {
   constructor(
     private usersService: UsersService,
@@ -45,6 +44,7 @@ export class UsersController {
   } */
 
   @Get('/whoami')
+  @UseGuards(AuthGuard)
   whoAmI(@CurrentUser() user: User) {
     return user;
   }
