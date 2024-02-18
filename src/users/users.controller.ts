@@ -7,34 +7,80 @@ import {
   Delete,
   Param,
   Query,
+  Session,
   NotFoundException,
   UseInterceptors,
   // ClassSerializerInterceptor
 } from '@nestjs/common';
-import { SerializeInterceptor } from '../interceptors/serialize.interceptor';
+import { Serialize } from '../interceptors/serialize.interceptor';
 import { CreateUserDto } from './dtos/create-user.dto';
 import { UpdateUserDto } from './dtos/update-user.dto';
 import { UsersService } from './users.service';
+import { AuthService } from './auth.service';
+import { UserDto } from '../users/dtos/user.dto';
+import { CurrentUser } from './decorators/current-user.decorator';
+import { CurrentUserInterceptor } from './interceptors/current-user.interceptor';
+import { User } from './user.entity';
 
 @Controller('auth')
+@Serialize(UserDto)
+@UseInterceptors(CurrentUserInterceptor)
 export class UsersController {
-  constructor(private usersService: UsersService) {}
+  constructor(
+    private usersService: UsersService,
+    private authService: AuthService,
+  ) {}
 
-  @Post('/signup')
-  createUser(@Body() body: CreateUserDto) {
-    console.log(body);
-    this.usersService.create(body.email, body.password);
+  // SESSION
+  /* @Get('/colors/:color')
+  setColor(@Param('color') color: string, @Session() session: any) {
+    console.log(color);
+    session.color = color;
   }
 
-  @UseInterceptors(SerializeInterceptor)
+  @Get('/colors')
+  getColor(@Session() session: any) {
+    console.log(session.color);
+    return session.color;
+  } */
+
+  @Get('/whoami')
+  whoAmI(@CurrentUser() user: User) {
+    return user;
+  }
+
+  // @Get('/whoami')
+  // whoAmI(@Session() session: any) {
+  //   return this.usersService.findOne(session.userID);
+  // }
+
+  @Post('/signup')
+  async createUser(@Body() body: CreateUserDto, @Session() session: any) {
+    console.log(body);
+    const user = await this.authService.signUp(body.email, body.password);
+    session.userID = user.id;
+    return user;
+  }
+
+  @Post('/signin')
+  async signIn(@Body() body: CreateUserDto, @Session() session: any) {
+    const user = await this.authService.signIn(body.email, body.password);
+    session.userID = user.id;
+    return user;
+  }
+
+  @Post('/signout')
+  signOut(@Session() session: any) {
+    session.userID = null;
+  }
+
   @Get('/:id')
   async findUser(@Param('id') id: string) {
-    console.log('Handler is running!')
+    console.log('Handler is running!');
     const user = await this.usersService.findOne(parseInt(id));
     if (!user) {
       throw new NotFoundException('User not found');
     }
-
     return user;
   }
 
